@@ -1,0 +1,67 @@
+#
+        # # ------深度监督----
+        # # print("第一层尺寸："+str(out.shape))  # 第一层尺寸：torch.Size([5, 512, 32, 32])
+        # lay1o3 = self.sigmoid(self.lay1o1(out))
+        # # print(lay1o1.shape)  # torch.Size([5, 1, 32, 32])
+        # # ------------------
+        #
+        out = F.interpolate(out, size=[hei // 4, wid // 4], mode='bilinear', align_corners=True)  # up sample
+        aout = F.interpolate(aout, size=[hei // 4, wid // 4], mode='bilinear', align_corners=True)  # up sample
+
+        out = self.fuse23(out, c2rfb)  # AFM
+        hotmaplist.append(out)  # hotmap
+
+        lossout1 = self.lay1o2(out)
+        lay1list.append(lossout1)
+
+        aout = self.fuse23(aout, a2rfb)  # 256,64,64
+        hotmaplist.append(aout)  # hotmap
+
+        lossaout1 = self.lay1o2(aout)
+        lay2list.append(lossaout1)
+        #
+        # # ------深度监督----
+        # # print("第二层尺寸："+str(out.shape))  # 第二层尺寸：torch.Size([5, 256, 64, 64])
+        # lay1o2 = self.sigmoid(self.lay1o2(out))
+        # # print(lay1o2.shape)  # torch.Size([5, 1, 64, 64])
+        # # ------------------
+        #
+        out = F.interpolate(out, size=[hei // 2, wid // 2], mode='bilinear', align_corners=True)  # up samlpe
+        aout = F.interpolate(aout, size=[hei // 2, wid // 2], mode='bilinear', align_corners=True)  # up samlpe
+
+        out = self.fuse12(out, c1rfb)  # AFM
+        hotmaplist.append(out)  # hotmap
+
+        lossout2 = self.lay1o3(out)
+        lay1list.append(lossout2)
+
+        aout = self.fuse12(aout, a1rfb)  # AFM  # 128,128,128
+        hotmaplist.append(aout)  # hotmap
+
+        lossaout2 = self.lay1o3(aout)
+        lay2list.append(lossaout2)
+        #
+        # # ------深度监督----
+        # # print("第三层尺寸："+str(out.shape))  # 第三层尺寸：torch.Size([5, 128, 128, 128])
+        # lay1o1 = self.sigmoid(self.lay1o3(out))
+        # # print(lay1o3.shape)  # torch.Size([5, 1, 64, 64])
+        # # ------------------
+        #
+        out = torch.add(out, aout)
+
+        pred = self.head(out)  # Conv + batchNorm + Relu
+        out = F.interpolate(pred, size=[hei, wid], mode='bilinear', align_corners=True)  # up sample
+        hotmaplist.append(out)  # hotmap
+        # # print("-------AGPCNet------")
+        # # print("out:" + str(out.shape))
+        # # print("--------------------")
+        #
+        # # -----------add-------------
+        # result = torch.cat((out, CoAout), dim=1)
+        # result = self.FZJ_decoder(result)
+        # result = F.interpolate(pred, size=[hei, wid], mode='bilinear', align_corners=True)  # up sample
+        # # print("reult:{}".format(Ori_result.shape))
+        # # ----------------------------
+        # lay1list.append(lay1o3)  # torch.Size([5, 1, 32, 32]
+        # lay1list.append(lay1o2)  # torch.Size([5, 1, 64, 64]
+        # lay1list.append(lay1o1)  # torch.Size([5, 1, 128, 128]
